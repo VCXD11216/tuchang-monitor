@@ -7,20 +7,30 @@ GitHub Actions 每小時自動抓資料 → 產生靜態 JSON → GitHub Pages �
 
 ---
 
-## 一、運作方式
+## 一、運作方式（混合架構）
+
+GNSS 來源 `rmdgnss.com` 只允許**台灣/校園網路**連入，GitHub 的國外雲端 IP 連不到，
+因此拆成兩半：雨量/地震在雲端全自動，GNSS 由台灣端電腦每天同步一次（GNSS 是日資料，一天一次就夠）。
 
 ```
-GitHub Actions（每小時排程）
-   │  scripts/build_data.py
-   ├─ GNSS 位移 ← rmdgnss.com 遠端 MySQL（算日平均，含 HMove 校正）
-   ├─ 時雨量   ← 白蘭站歷史 CSV 打底 + CWA 開放資料 API 續抓
-   ├─ 地震     ← USGS Earthquake API（篩選會影響土場的事件）
-   └─ 產生 data/*.json → commit 回 repo
+☁️ GitHub Actions（每小時，公開 API，免機器）
+   │  build_data.py rainfall earthquake
+   ├─ 時雨量 ← 白蘭站歷史 CSV 打底 + CWA 開放資料 API 續抓
+   ├─ 地震   ← USGS Earthquake API
+   └─ 更新 data/rainfall*.json、earthquake.json → push
+
+💻 台灣網路的電腦（每天一次，跑 scripts/sync_gnss_local.bat）
+   │  build_data.py gnss
+   ├─ GNSS ← rmdgnss.com 遠端 MySQL（日平均，含 HMove 校正）
+   └─ 更新 data/gnss.json、summary.json → push
         │
         ▼
-GitHub Pages（靜態網站）
+🌐 GitHub Pages（靜態網站，24 小時在線）
    index.html（Chart.js）讀 data/*.json 畫圖
 ```
+
+> 兩邊各自只動自己的 JSON 檔，用 `git pull --rebase` 交錯不衝突。
+> 某天電腦沒開，GNSS 就那天不更新，隔天開機自動補上（每次抓完整歷史）。
 
 - **有效累積雨量 (ECR)** 和**地震震度估算**都是前端 JavaScript 即時計算，不需要後端。
 - 時雨量的歷史資料存在 `data/rainfall_hourly.json`（由 `土場雨量資料/` 的 CODIS CSV 打底），
@@ -82,6 +92,18 @@ GitHub repo 頁面 → **Settings** → **Secrets and variables** → **Actions*
 綠色勾勾代表成功；此時 `data/` 會被更新並自動部署。
 
 ---
+
+## 三之二、設定 GNSS 每日同步（在台灣網路的電腦上，做一次）
+
+1. **裝 Git 與 Python**（若還沒），並把這個 repo clone 或複製到該電腦。
+2. 在 `scripts\` 底下，複製 `secrets.local.bat.範本` → 改名為 `secrets.local.bat`，
+   填入 `RMDGNSS_PASSWORD`（`secrets.local.bat` 已被 .gitignore 排除，不會上傳）。
+3. 先手動雙擊 `scripts\sync_gnss_local.bat` 測一次，看到「已更新並推送」或「無變更」即成功。
+4. 設成自動：用**工作排程器**每天（或每次登入）跑一次。PowerShell 一行搞定：
+   ```powershell
+   schtasks /Create /SC ONLOGON /TN "土場GNSS同步" /TR "\"完整路徑\scripts\sync_gnss_local.bat\"" /F
+   ```
+   （`/SC ONLOGON` = 每次登入就同步；也可用 `/SC DAILY /ST 09:00` 改成每天 9 點）
 
 ## 四、日常維護
 
