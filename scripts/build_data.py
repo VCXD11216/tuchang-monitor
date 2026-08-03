@@ -339,32 +339,45 @@ def build_summary(datasets):
 
 # ======================================================================
 def main():
+    # 可指定只更新哪些項目 (預設全部)。用於混合架構:
+    #   GitHub Actions (國外 IP,連不到 rmdgnss) 只跑 rainfall + earthquake:
+    #       python build_data.py rainfall earthquake
+    #   台灣網路的電腦每天跑 GNSS:
+    #       python build_data.py gnss
+    all_targets = ['gnss', 'rainfall', 'earthquake']
+    targets = [a.lower() for a in sys.argv[1:] if a.lower() in all_targets] or all_targets
+    builders = {'gnss': build_gnss, 'rainfall': build_rainfall, 'earthquake': build_earthquake}
+
     log("=" * 56)
     log(f"土場邊坡監測 資料更新  {datetime.now(TAIPEI).strftime('%Y-%m-%d %H:%M:%S')} (台灣時間)")
+    log(f"本次更新項目: {', '.join(targets)}")
     log("=" * 56)
+
     datasets = {}
     errors = []
-
-    for name, fn in [('gnss', build_gnss), ('rainfall', build_rainfall),
-                     ('earthquake', build_earthquake)]:
+    for name in all_targets:
+        if name not in targets:
+            continue
         try:
-            datasets[name] = fn()
+            datasets[name] = builders[name]()
         except Exception as e:
             errors.append(f"{name}: {e}")
             log(f"  [錯誤] {name}: {e}")
 
-    try:
-        build_summary(datasets)
-    except Exception as e:
-        errors.append(f"summary: {e}")
-        log(f"  [錯誤] summary: {e}")
+    # summary 依賴 gnss:只有這次成功抓到 gnss 才更新,避免把好的 summary 洗成空的
+    if 'gnss' in targets and 'gnss' in datasets:
+        try:
+            build_summary(datasets)
+        except Exception as e:
+            errors.append(f"summary: {e}")
+            log(f"  [錯誤] summary: {e}")
 
     log("=" * 56)
     if errors:
         log("完成 (有警告/錯誤):")
         for e in errors:
             log("  - " + e)
-        # GNSS 失敗才視為致命 (雨量/地震失敗會保留舊資料)
+        # GNSS 失敗才視為致命 (雨量/地震失敗會保留舊資料,不讓排程變紅)
         if any(e.startswith('gnss') for e in errors):
             sys.exit(1)
     else:
