@@ -654,7 +654,7 @@ function computeScatterRange(data, chartDef) {
   return { min: -range, max: range, stepSize };
 }
 
-function makeScatter(id, data, chartDef) {
+function makeScatter(id, data, chartDef, recentDays) {
   const ctx = document.getElementById(id);
   if (!ctx) return;
   const xLabel = chartDef.x_label || 'X';
@@ -662,11 +662,13 @@ function makeScatter(id, data, chartDef) {
   const r = computeScatterRange(data, chartDef);
   const older = data.filter(p => !p.recent);
   const recent = data.filter(p => p.recent);
+  const recentLabel = '最近 ' + (recentDays || 7) + ' 天';
 
   if (charts[id]) {
     const c = charts[id];
     c.data.datasets[0].data = older;
     c.data.datasets[1].data = recent;
+    c.data.datasets[1].label = recentLabel;
     c.options.scales.x.min = r.min; c.options.scales.x.max = r.max; c.options.scales.x.ticks.stepSize = r.stepSize;
     c.options.scales.y.min = r.min; c.options.scales.y.max = r.max; c.options.scales.y.ticks.stepSize = r.stepSize;
     c.update();
@@ -676,7 +678,7 @@ function makeScatter(id, data, chartDef) {
     type:'scatter',
     data:{ datasets:[
       { label:'較早', data:older, pointRadius:3, backgroundColor:'rgba(59,130,246,0.75)', borderColor:'transparent', order:2 },
-      { label:'最近 7 天', data:recent, pointRadius:5, backgroundColor:'rgba(220,38,38,0.95)', borderColor:'#ffffff', borderWidth:1, order:1 },
+      { label:recentLabel, data:recent, pointRadius:5, backgroundColor:'rgba(220,38,38,0.95)', borderColor:'#ffffff', borderWidth:1, order:1 },
     ]},
     options:{
       responsive:true, maintainAspectRatio:true, aspectRatio:1,
@@ -820,7 +822,7 @@ async function loadSource(src) {
           x: r[s.field_x], y: r[s.field_y],
           recent: (lastT - new Date(r[tf]).getTime()) < win,
         }));
-        makeScatter(_cid, pts, chartDef);
+        makeScatter(_cid, pts, chartDef, d);
       }
       window['_scatterDays_' + _cid] = applyScatterDays;
       const sel = document.getElementById('scatter_days_' + _cid);
