@@ -561,6 +561,15 @@ function buildUI() {
                   <option value="5.5">M5.5+</option>
                   <option value="6.0">M6.0+</option>
                 </select></label>` : ''}
+              ${chart.type === 'scatter' ? `<label style="font-size:13px;color:#64748b;">標記最近
+                <select id="scatter_days_${canvasId}" onchange="window._scatterDays_${canvasId}(this.value)" style="padding:2px 6px;border-radius:4px;border:1px solid #cbd5e1;font-size:13px;">
+                  <option value="1">1天</option>
+                  <option value="3">3天</option>
+                  <option value="7" selected>7天</option>
+                  <option value="14">14天</option>
+                  <option value="21">21天</option>
+                  <option value="30">30天</option>
+                </select></label>` : ''}
               <button class="chart-btn" onclick="downloadCsv('${src.key}')">下載 CSV</button>
               <button class="chart-btn" onclick="downloadChart('${canvasId}','${canvasId}.png','${chart.title}')">下載圖檔</button>
             </div>
@@ -801,14 +810,21 @@ async function loadSource(src) {
     } else if (chartDef.type === 'scatter') {
       const s = chartDef.series[0];
       const tf = src.time_field;
-      // 以「最後一筆資料的日期」往前推 7 天當作「最近一週」
-      let cutoff = 0;
-      if (data.length) cutoff = new Date(data[data.length - 1][tf]).getTime() - 7 * 24 * 3600 * 1000;
-      const pts = data.map(r => ({
-        x: r[s.field_x], y: r[s.field_y],
-        recent: new Date(r[tf]).getTime() >= cutoff,
-      }));
-      makeScatter(canvasId, pts, chartDef);
+      // 以「最後一筆資料的日期」為基準往前推 N 天,標記那些點為紅色
+      const lastT = data.length ? new Date(data[data.length - 1][tf]).getTime() : 0;
+      const _cid = canvasId;
+      function applyScatterDays(days) {
+        const d = parseInt(days) || 7;
+        const win = d * 24 * 3600 * 1000;
+        const pts = data.map(r => ({
+          x: r[s.field_x], y: r[s.field_y],
+          recent: (lastT - new Date(r[tf]).getTime()) < win,
+        }));
+        makeScatter(_cid, pts, chartDef);
+      }
+      window['_scatterDays_' + _cid] = applyScatterDays;
+      const sel = document.getElementById('scatter_days_' + _cid);
+      applyScatterDays(sel ? sel.value : 7);
     } else if (chartDef.type === 'bar') {
       const datasets = chartDef.series.map(s => ({
         type: 'bar',
