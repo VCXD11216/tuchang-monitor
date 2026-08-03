@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>土場邊坡監測 | CCC LAB</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+  <script>
+    Chart.register(window['chartjs-plugin-annotation']);
+    Chart.Tooltip.positioners.offsetCursor = function(elements, eventPosition) {
+      return { x: eventPosition.x + 150, y: eventPosition.y - 120 };
+    };
+  </script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: #f0f4f8;
+      color: #1e293b;
+      font-family: "Segoe UI", "Noto Sans TC", system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 28px 24px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding: 16px 24px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    .title {
+      font-weight: 800;
+      font-size: 21px;
+      color: #1e40af;
+    }
+
+    .status {
+      font-size: 13px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      display: inline-block;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* ====== Logo 設定 ====== */
+    .header-logo {
+      height: 50px;
+      opacity: 0.9;
+      margin-left: 16px;
+    }
+    .header-logo:hover {
+      opacity: 1;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .tab-btn {
+      padding: 10px 24px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #fff;
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      color: #1e40af;
+      border-color: #93c5fd;
+      background: #eff6ff;
+    }
+
+    .tab-btn.active {
+      background: #1e40af;
+      color: #fff;
+      border-color: #1e40af;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Controls bar */
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 22px;
+      padding: 14px 20px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    .controls label {
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .controls select,
+    .controls input {
+      padding: 8px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #fff;
+      color: #1e293b;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .controls select:focus,
+    .controls input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+
+    .controls button {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      background: #1e40af;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .controls button:hover {
+      background: #1d4ed8;
+    }
+
+    /* Summary cards */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .summary-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      transition: transform 0.2s, box-shadow 0.2s;
+      border-left: 4px solid #3b82f6;
+    }
+
+    .summary-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+
+    .summary-card h3 {
+      font-size: 11px;
+      color: #64748b;
+      margin: 0 0 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      font-weight: 600;
+    }
+
+    .summary-card .value {
+      font-size: 30px;
+      font-weight: 800;
+      color: #1e40af;
+      line-height: 1.1;
+    }
+
+    .summary-card .sub {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 8px;
+    }
+
+    .summary-card.warn { border-left-color: #f59e0b; }
+    .summary-card.warn .value { color: #d97706; }
+
+    .summary-card.ok { border-left-color: #22c55e; }
+    .summary-card.ok .value { color: #16a34a; }
+
+    /* Chart grid */
+    .grid {
+      display: grid;
+      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    }
+
+    /* Chart cards */
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+
+    .card .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .card h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .chart-wrap {
+      width: 100%;
+      min-height: 280px;
+      position: relative;
+    }
+
+    .card.wide { grid-column: 1 / -1; }
+    .chart-wrap.square { aspect-ratio: 1/1; max-width: 550px; margin: 0 auto; }
+
+    /* Download buttons */
+    .chart-btn {
+      padding: 6px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #f8fafc;
+      color: #3b82f6;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .chart-btn:hover {
+      background: #eff6ff;
+      border-color: #93c5fd;
+    }
+
+    /* Loading states */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #94a3b8;
+      font-size: 15px;
+    }
+
+    .chart-loading {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      font-size: 14px;
+      background: rgba(255,255,255,0.85);
+      border-radius: 8px;
+      z-index: 2;
+    }
+
+    .chart-loading .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 10px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .wrap { padding: 16px 12px; }
+      .grid { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+      .header { flex-direction: column; gap: 12px; text-align: center; padding: 16px; }
+      .tabs { width: 100%; overflow-x: auto; }
+      .tab-btn { padding: 8px 16px; font-size: 13px; }
+      .controls { padding: 12px 14px; gap: 8px; }
+      .card { padding: 14px; }
+      .summary-card .value { font-size: 24px; }
+    }
+
+    @media (max-width: 480px) {
+      .summary-grid { grid-template-columns: 1fr; }
+      .card .card-header { flex-direction: column; gap: 8px; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <span class="title">土場邊坡監測 · CCC LAB</span>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <span class="status">
+        <span class="status-dot"></span>
+        <span id="lastUpdate">載入中...</span>
+      </span>
+      <img src="data:image/png;base64,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" alt="DEMon Logo" class="header-logo">
+    </div>
+  </div>
+
+  <div class="tabs" id="tabBar"></div>
+
+  <div class="controls">
+    <label>快速選擇：</label>
+    <select id="timeRange" onchange="usePreset()">
+      <option value="all" selected>全部資料</option>
+      <option value="720">30 天</option>
+      <option value="168">7 天</option>
+      <option value="72">3 天</option>
+      <option value="24">24 小時</option>
+      <option value="custom">自訂日期...</option>
+    </select>
+    <label>從：</label><input type="date" id="dateFrom">
+    <label>到：</label><input type="date" id="dateTo">
+    <button onclick="refreshData()">查詢</button>
+  </div>
+
+  <div class="summary-grid" id="summaryCards"><div class="loading"><div class="spinner" style="display:inline-block;vertical-align:middle;margin-right:8px;width:20px;height:20px;border:2px solid #e2e8f0;border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s linear infinite;"></div>載入摘要資料中...</div></div>
+
+  <div id="tabContents"></div>
+</div>
+
+<script>
+// ============ Data Source Config (原 datasources.py 的 GNSS/邊坡子集) ============
+const SOURCES = [
+  {
+    key: 'gnss', db: 'gnssdata', table: 'g1_tuchang', time_field: 'date_time',
+    fields: ['E','N','H','Angle','Axis','Plate','EMove','NMove','HMove','TotalMove','EDay','NDay','HDay'],
+    default_hours: null, tab: 'gnss',
+    charts: [
+      {
+        title: 'G1 Day (累積位移 mm)', y_label: '累積變位量 (mm)', y_min: -40, y_max: 40, wide: true,
+        series: [
+          { field: 'EMove', label: 'EMove (E向)', color: 'rgba(37,99,235,0.9)' },
+          { field: 'NMove', label: 'NMove (N向)', color: 'rgba(245,158,11,0.9)' },
+          { field: 'HMove', label: 'HMove (H向)', color: 'rgba(100,116,139,0.9)' },
+        ],
+        overlay: {
+          key: 'rainfall_hourly', field: 'precipitation', label: '有效累積雨量 (mm)',
+          color: 'rgba(59,130,246,0.15)', type: 'bar', y_axis_id: 'yRain',
+          y_label: '有效累積雨量 (mm)', ecr: true, ecr_halflife_days: 7,
+        },
+        earthquake: { key: 'earthquake', color: 'rgba(220,38,38,0.7)' },
+      },
+      {
+        title: 'G1 Average Day', type: 'scatter',
+        series: [{ field_x: 'EMove', field_y: 'NMove', label: 'E vs N', color: '#3b82f6' }],
+        x_label: 'N方向變化(mm)', y_label: 'E方向變化(mm)', axis_min: -20, axis_max: 20,
+      },
+      {
+        title: 'GNSS — 總位移量 (mm)', y_label: '累積變位量 (mm)',
+        series: [{ field: 'TotalMove', label: '總位移 (mm)', color: '#f97316' }], fill: true,
+      },
+      {
+        title: 'GNSS — 高程 H (m)', y_label: '高程 (m)',
+        series: [{ field: 'H', label: '高程 H (m)', color: '#a855f7' }], fill: true,
+      },
+    ],
+    summary: { cards: [
+      { title: 'GNSS 總位移', field: 'TotalMove', unit: ' mm', cls: 'ok' },
+      { title: 'GNSS 高程 H', field: 'H', unit: ' m', cls: '', decimals: 3 },
+    ]},
+  },
+  {
+    key: 'rainfall', db: 'gnssdata', table: 'rainfall_bailan', time_field: 'date_time',
+    fields: ['precipitation'], default_hours: 'all', max_points: 0, tab: 'gnss',
+    charts: [
+      {
+        title: '白蘭站 (C1D410) — 日雨量', y_label: '日雨量 (mm)', type: 'bar', fill: true,
+        series: [{ field: 'precipitation', label: '日雨量 (mm)', color: 'rgba(59,130,246,0.6)' }],
+      },
+      {
+        title: '白蘭站 (C1D410) — 有效累積雨量 (日雨量)', y_label: '有效累積雨量 (mm)',
+        type: 'ecr', ecr_halflife_days: 7, fill: true,
+        series: [{ field: 'precipitation', label: '有效累積雨量 (mm)', color: 'rgba(234,88,12,0.8)' }],
+      },
+    ],
+  },
+  {
+    key: 'rainfall_hourly', db: 'gnssdata', table: 'rainfall_bailan_hourly', time_field: 'date_time',
+    fields: ['precipitation'], default_hours: 'all', max_points: 0, tab: 'gnss',
+    charts: [
+      {
+        title: '白蘭站 (C1D410) — 時雨量', y_label: '時雨量 (mm/hr)', type: 'bar', fill: true,
+        series: [{ field: 'precipitation', label: '時雨量 (mm/hr)', color: 'rgba(59,130,246,0.6)' }],
+      },
+      {
+        title: '白蘭站 (C1D410) — 有效累積雨量 (時雨量)', y_label: '有效累積雨量 (mm)',
+        type: 'ecr', ecr_halflife_days: 7, fill: true,
+        series: [{ field: 'precipitation', label: '有效累積雨量 (mm)', color: 'rgba(59,130,246,0.8)' }],
+      },
+    ],
+  },
+  {
+    key: 'earthquake', db: 'gnssdata', table: 'earthquake_events', time_field: 'date_time',
+    fields: ['magnitude','depth_km','place','distance_km'],
+    default_hours: 'all', max_points: 0, tab: 'gnss', charts: [],
+  },
+];
+
+// ============ Globals ============
+let charts = {};
+let queryMode = 'preset';
+let DATA = {};            // 本輪抓到的原始資料快取
+let cacheBust = '';       // 讓每輪重新抓最新 JSON
+const gridColor = 'rgba(0,0,0,.06)';
+
+Chart.defaults.color = '#64748b';
+Chart.defaults.borderColor = 'rgba(0,0,0,0.08)';
+Chart.defaults.font.family = "'Segoe UI','Noto Sans TC',system-ui,sans-serif";
+
+// ============ 靜態 JSON 抓取 + 前端時間篩選 ============
+async function fetchData(key) {
+  if (DATA[key]) return DATA[key];
+  try {
+    const res = await fetch('data/' + key + '.json?t=' + cacheBust);
+    DATA[key] = res.ok ? await res.json() : [];
+  } catch (e) {
+    console.warn('抓取 ' + key + '.json 失敗:', e);
+    DATA[key] = [];
+  }
+  return DATA[key];
+}
+
+// 依目前 UI 選擇的時間範圍過濾 (預設全部;只有選「自訂日期」且填了起訖才過濾)
+function filterByTime(data, timeField) {
+  const val = document.getElementById('timeRange').value;
+  const useCustom = (queryMode === 'custom' || val === 'custom');
+  if (useCustom) {
+    const f = document.getElementById('dateFrom').value;
+    const t = document.getElementById('dateTo').value;
+    if (f && t) {
+      const start = new Date(f + 'T00:00:00');
+      const end = new Date(t + 'T23:59:59');
+      return data.filter(r => { const d = new Date(r[timeField]); return d >= start && d <= end; });
+    }
+  }
+  return data;
+}
+
+// ============ Auto-generate Tabs & Charts ============
+function buildUI() {
+  const tabs = {};
+  const tabNames = { gnss: '土場 GNSS G1' };
+
+  SOURCES.forEach(src => {
+    const tab = src.tab || 'env';
+    if (!tabs[tab]) tabs[tab] = [];
+    tabs[tab].push(src);
+  });
+
+  const tabBar = document.getElementById('tabBar');
+  const tabContents = document.getElementById('tabContents');
+  let first = true;
+  for (const [tabKey, sources] of Object.entries(tabs)) {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (first ? ' active' : '');
+    btn.textContent = tabNames[tabKey] || tabKey;
+    btn.onclick = function() { switchTab(tabKey, this); };
+    tabBar.appendChild(btn);
+
+    const div = document.createElement('div');
+    div.className = 'tab-content' + (first ? ' active' : '');
+    div.id = 'tab-' + tabKey;
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+
+    sources.forEach(src => {
+      (src.charts || []).forEach((chart, ci) => {
+        const canvasId = 'chart_' + src.key + '_' + ci;
+        const isScatter = chart.type === 'scatter';
+        const isWide = chart.wide === true;
+        const card = document.createElement('section');
+        card.className = 'card' + (isWide ? ' wide' : '');
+        const hasEcr = (chart.overlay && chart.overlay.ecr) || chart.type === 'ecr';
+        const ecrHalflife = chart.type === 'ecr' ? (chart.ecr_halflife_days || 7) : (chart.overlay ? chart.overlay.ecr_halflife_days : 0);
+        card.innerHTML = `
+          <div class="card-header">
+            <h3>${chart.title}</h3>
+            <div style="display:flex;gap:8px;align-items:center;">
+              ${hasEcr ? `<label style="font-size:13px;color:#64748b;">有效雨量半衰期:
+                <select id="ecr_halflife_${canvasId}" onchange="window._ecrRedraw_${canvasId}(this.value)" style="padding:2px 6px;border-radius:4px;border:1px solid #cbd5e1;font-size:13px;">
+                  <option value="0">無</option>
+                  <option value="1" ${ecrHalflife==1?'selected':''}>1天</option>
+                  <option value="3" ${ecrHalflife==3?'selected':''}>3天</option>
+                  <option value="7" ${ecrHalflife==7?'selected':''}>7天</option>
+                  <option value="14" ${ecrHalflife==14?'selected':''}>14天</option>
+                  <option value="21" ${ecrHalflife==21?'selected':''}>21天</option>
+                  <option value="30" ${ecrHalflife==30?'selected':''}>30天</option>
+                </select></label>` : ''}
+              ${chart.earthquake ? `<label style="font-size:13px;color:#64748b;">地震規模 ≥
+                <select id="eq_filter_${canvasId}" onchange="window._eqFilter_${canvasId}(this.value)" style="padding:2px 6px;border-radius:4px;border:1px solid #cbd5e1;font-size:13px;">
+                  <option value="99">無</option>
+                  <option value="0">全部</option>
+                  <option value="3.0">M3.0+</option>
+                  <option value="3.5">M3.5+</option>
+                  <option value="4.0">M4.0+</option>
+                  <option value="4.5" selected>M4.5+</option>
+                  <option value="5.0">M5.0+</option>
+                  <option value="5.5">M5.5+</option>
+                  <option value="6.0">M6.0+</option>
+                </select></label>` : ''}
+              <button class="chart-btn" onclick="downloadCsv('${src.key}')">下載 CSV</button>
+              <button class="chart-btn" onclick="downloadChart('${canvasId}','${canvasId}.png','${chart.title}')">下載圖檔</button>
+            </div>
+          </div>
+          <div class="chart-wrap${isScatter ? ' square' : ''}">
+            <div class="chart-loading" id="loading_${canvasId}"><div class="spinner"></div>載入資料中...</div>
+            <canvas id="${canvasId}"></canvas>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    });
+
+    div.appendChild(grid);
+    tabContents.appendChild(div);
+    first = false;
+  }
+}
+
+// ============ Tab Switch ============
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ============ Time Filter UI ============
+function usePreset() {
+  const val = document.getElementById('timeRange').value;
+  if (val === 'custom') { queryMode = 'custom'; } else { queryMode = 'preset'; refreshData(); }
+}
+
+// ============ Chart Helpers ============
+function timeOpts() {
+  return {
+    responsive:true, maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false,axis:'x'},
+    plugins:{
+      legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:10,padding:15,font:{size:13,weight:'bold'}}},
+      tooltip:{backgroundColor:'rgba(255,255,255,0.95)',titleColor:'#1e293b',bodyColor:'#1e293b',borderColor:'#e2e8f0',borderWidth:1,usePointStyle:true,position:'offsetCursor',
+        callbacks:{
+          labelPointStyle:function(){return{pointStyle:'circle',rotation:0};},
+          labelColor:function(ctx){
+            if (ctx.dataset.fill === true) {
+              var c = 'rgba(59,130,246,0.6)';
+              return {borderColor:c, backgroundColor:c, borderWidth:2};
+            }
+            var bc = ctx.dataset.borderColor || ctx.dataset.backgroundColor;
+            return {borderColor:bc, backgroundColor:'#ffffff', borderWidth:2};
+          }
+        }
+      }
+    },
+    scales:{
+      x:{type:'time',time:{tooltipFormat:'yyyy-MM-dd HH:mm'},grid:{color:gridColor},offset:true},
+      y:{grid:{color:gridColor}}
+    }
+  };
+}
+
+function makeChart(id, datasets, opts) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  if (charts[id]) { charts[id].data.datasets = datasets; charts[id].options = opts || timeOpts(); charts[id].update(); }
+  else { charts[id] = new Chart(ctx.getContext('2d'), { type:'line', data:{ datasets }, options: opts || timeOpts() }); }
+}
+
+function computeScatterRange(data, chartDef) {
+  const floor = Math.max(
+    Math.abs(chartDef.axis_min ?? 0),
+    Math.abs(chartDef.axis_max ?? 0),
+    5
+  );
+  let maxAbs = 0;
+  for (const p of data) {
+    if (Number.isFinite(p.x)) maxAbs = Math.max(maxAbs, Math.abs(p.x));
+    if (Number.isFinite(p.y)) maxAbs = Math.max(maxAbs, Math.abs(p.y));
+  }
+  const range = Math.max(floor, Math.ceil((maxAbs * 1.1) / 5) * 5);
+  const stepSize = range <= 20 ? 5 : range <= 50 ? 10 : range <= 100 ? 20 : 50;
+  return { min: -range, max: range, stepSize };
+}
+
+function makeScatter(id, data, chartDef) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  const xLabel = chartDef.x_label || 'X';
+  const yLabel = chartDef.y_label || 'Y';
+  const r = computeScatterRange(data, chartDef);
+
+  if (charts[id]) {
+    const c = charts[id];
+    c.data.datasets[0].data = data;
+    c.options.scales.x.min = r.min; c.options.scales.x.max = r.max; c.options.scales.x.ticks.stepSize = r.stepSize;
+    c.options.scales.y.min = r.min; c.options.scales.y.max = r.max; c.options.scales.y.ticks.stepSize = r.stepSize;
+    c.update();
+    return;
+  }
+  charts[id] = new Chart(ctx.getContext('2d'), {
+    type:'scatter',
+    data:{ datasets:[{ label: 'E vs N', data:data, pointRadius:3, backgroundColor:'rgba(59,130,246,0.8)', borderColor:'transparent' }] },
+    options:{
+      responsive:true, maintainAspectRatio:true, aspectRatio:1,
+      plugins:{
+        legend:{display:false},
+        title:{display:true, text:chartDef.title, color:'#1e293b', font:{size:20,weight:'bold'}, padding:{bottom:5}},
+        subtitle:{display:true, text:xLabel, color:'#64748b', font:{size:16,weight:'bold'}, padding:{bottom:10}},
+        tooltip:{callbacks:{label:(c)=> 'N: '+c.raw.x.toFixed(1)+', E: '+c.raw.y.toFixed(1)+' (mm)'}},
+        annotation:{annotations:{
+          x0:{type:'line',xMin:0,xMax:0,borderColor:'rgba(0,0,0,0.15)',borderWidth:1.5},
+          y0:{type:'line',yMin:0,yMax:0,borderColor:'rgba(0,0,0,0.15)',borderWidth:1.5}
+        }}
+      },
+      scales:{
+        x:{type:'linear', min:r.min, max:r.max, ticks:{stepSize:r.stepSize,font:{weight:'bold'}}, grid:{color:'rgba(0,0,0,0.06)'}},
+        y:{type:'linear', min:r.min, max:r.max, title:{display:true,text:yLabel,font:{size:16,weight:'bold'}}, ticks:{stepSize:r.stepSize,font:{weight:'bold'}}, grid:{color:'rgba(0,0,0,0.06)'}}
+      }
+    }
+  });
+}
+
+function downloadChart(id, filename, title) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  const titleHeight = title ? 50 : 0;
+  const tmp = document.createElement('canvas');
+  tmp.width = canvas.width;
+  tmp.height = canvas.height + titleHeight;
+  const tctx = tmp.getContext('2d');
+  tctx.fillStyle = '#ffffff';
+  tctx.fillRect(0, 0, tmp.width, tmp.height);
+  if (title) {
+    tctx.fillStyle = '#1e293b';
+    tctx.font = 'bold 24px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+    tctx.textAlign = 'left';
+    tctx.fillText(title, 20, 34);
+  }
+  tctx.drawImage(canvas, 0, titleHeight);
+  tmp.toBlob(function(blob){ saveAs(blob, filename); }, 'image/png', 1.0);
+}
+
+// 前端即時產生 CSV (取代原本後端 /csv/ 端點)
+async function downloadCsv(key) {
+  const src = SOURCES.find(s => s.key === key);
+  if (!src) return;
+  const raw = await fetchData(key);
+  const data = filterByTime(raw, src.time_field);
+  const cols = [src.time_field, ...src.fields];
+  const lines = [cols.join(',')];
+  data.forEach(r => {
+    lines.push(cols.map(c => {
+      let v = r[c];
+      if (v === undefined || v === null) return '';
+      v = String(v);
+      return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+    }).join(','));
+  });
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  saveAs(blob, key + '.csv');
+}
+
+// ============ Load Data ============
+function hideLoading(src) {
+  (src.charts || []).forEach((chart, ci) => {
+    const el = document.getElementById('loading_chart_' + src.key + '_' + ci);
+    if (el) el.style.display = 'none';
+  });
+}
+async function loadSource(src) {
+  const raw = await fetchData(src.key);
+  const data = filterByTime(raw, src.time_field);
+  if (data.length === 0) { hideLoading(src); return; }
+
+  for (let ci = 0; ci < (src.charts || []).length; ci++) {
+    const chartDef = src.charts[ci];
+    const canvasId = 'chart_' + src.key + '_' + ci;
+
+    if (chartDef.type === 'ecr') {
+      const s = chartDef.series[0];
+      const timeField = src.time_field;
+      const initHalflife = chartDef.ecr_halflife_days || 7;
+
+      function computeStandaloneECR(rawData, halflife) {
+        let interval = 1;
+        if (rawData.length >= 2) {
+          const t0 = new Date(rawData[0][timeField]).getTime();
+          const t1 = new Date(rawData[1][timeField]).getTime();
+          const diffHours = (t1 - t0) / (1000 * 60 * 60);
+          if (diffHours <= 2) interval = 24;
+        }
+        const alpha = Math.pow(0.5, 1.0 / (halflife * interval));
+        let ecr = 0;
+        return rawData.map(r => {
+          const rain = r[s.field] || 0;
+          ecr = rain + alpha * ecr;
+          return { x: new Date(r[timeField]), y: Math.round(ecr * 100) / 100 };
+        });
+      }
+
+      const ecrData = computeStandaloneECR(data, initHalflife);
+      const datasets = [{
+        label: s.label,
+        data: ecrData,
+        borderColor: s.color,
+        backgroundColor: s.color.replace('0.8', '0.15'),
+        borderWidth: 2, pointRadius: 0, tension: 0.25,
+        fill: true,
+      }];
+      const opts = timeOpts();
+      if (chartDef.y_label) opts.scales.y.title = { display: true, text: chartDef.y_label, font: { size: 14, weight: 'bold' } };
+      if (data.length > 0) {
+        opts.scales.x.min = new Date(data[0][timeField]);
+        opts.scales.x.max = new Date(data[data.length - 1][timeField]);
+      }
+      makeChart(canvasId, datasets, opts);
+
+      const _cid = canvasId;
+      const _data = data;
+      window['_ecrRedraw_' + _cid] = function(newHalflife) {
+        const chart = Chart.getChart(_cid);
+        if (!chart) return;
+        const hl = parseFloat(newHalflife);
+        if (hl === 0) {
+          chart.data.datasets[0].data = [];
+        } else {
+          chart.data.datasets[0].data = computeStandaloneECR(_data, hl);
+        }
+        chart.update();
+      };
+
+    } else if (chartDef.type === 'scatter') {
+      const s = chartDef.series[0];
+      const pts = data.map(r => ({ x: r[s.field_x], y: r[s.field_y] }));
+      makeScatter(canvasId, pts, chartDef);
+    } else if (chartDef.type === 'bar') {
+      const datasets = chartDef.series.map(s => ({
+        type: 'bar',
+        label: s.label,
+        data: data.map(r => ({ x: new Date(r[src.time_field]), y: r[s.field] })),
+        backgroundColor: s.color,
+        borderColor: s.color,
+        borderWidth: 0,
+        barPercentage: 1.0,
+        categoryPercentage: 1.0,
+        minBarLength: 1,
+      }));
+      const opts = timeOpts();
+      opts.scales.x.offset = false;
+      if (chartDef.y_label) opts.scales.y.title = { display: true, text: chartDef.y_label, font: { size: 14, weight: 'bold' } };
+      if (data.length > 0) {
+        opts.scales.x.min = new Date(data[0][src.time_field]);
+        opts.scales.x.max = new Date(data[data.length - 1][src.time_field]);
+      }
+      makeChart(canvasId, datasets, opts);
+    } else {
+      // Line chart
+      const datasets = chartDef.series.map(s => ({
+        label: s.label,
+        data: data.map(r => {
+          const d = new Date(r[src.time_field]);
+          return { x: new Date(d.getFullYear(), d.getMonth(), d.getDate()), y: r[s.field] };
+        }),
+        borderColor: s.color,
+        backgroundColor: chartDef.fill ? s.color.replace(')', ',0.1)').replace('rgb', 'rgba') : undefined,
+        borderWidth: 2, pointRadius: 0, pointHitRadius: 20, tension: 0.25,
+        fill: chartDef.fill || false,
+        yAxisID: 'y',
+        order: 0,
+      }));
+
+      const opts = timeOpts();
+      if (chartDef.y_label) opts.scales.y.title = { display: true, text: chartDef.y_label, font: { size: 14, weight: 'bold' } };
+      if (chartDef.y_min !== undefined) opts.scales.y.min = chartDef.y_min;
+      if (chartDef.y_max !== undefined) opts.scales.y.max = chartDef.y_max;
+
+      if (data.length > 0) {
+        opts.scales.x.min = new Date(data[0][src.time_field]);
+        opts.scales.x.max = new Date(data[data.length - 1][src.time_field]);
+      }
+
+      // Overlay: 抓另一個來源 (雨量) 疊加成右軸
+      if (chartDef.overlay) {
+        const ov = chartDef.overlay;
+        try {
+          const ovData = await fetchData(ov.key);
+          const ovSrc = SOURCES.find(s => s.key === ov.key);
+          const ovTimeField = ovSrc ? ovSrc.time_field : 'date_time';
+          const mainStart = new Date(data[0][src.time_field]);
+          const ovFiltered = ovData.filter(r => new Date(r[ovTimeField]) >= mainStart);
+
+          function computeECR(rawData, halflife) {
+            let interval = 1;
+            if (rawData.length >= 2) {
+              const t0 = new Date(rawData[0][ovTimeField]).getTime();
+              const t1 = new Date(rawData[1][ovTimeField]).getTime();
+              const diffHours = (t1 - t0) / (1000 * 60 * 60);
+              if (diffHours <= 2) interval = 24;
+            }
+            const alpha = Math.pow(0.5, 1.0 / (halflife * interval));
+            let ecr = 0;
+            return rawData.map(r => {
+              const rain = r[ov.field] || 0;
+              ecr = rain + alpha * ecr;
+              return { x: new Date(r[ovTimeField]), y: Math.round(ecr * 100) / 100 };
+            });
+          }
+
+          const gnssDates = new Set();
+          data.forEach(r => {
+            const d = new Date(r[src.time_field]);
+            const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+            gnssDates.add(key);
+          });
+
+          function downsampleDaily(ecrData) {
+            const daily = {};
+            ecrData.forEach(d => {
+              const yr = d.x.getFullYear();
+              const mo = String(d.x.getMonth() + 1).padStart(2, '0');
+              const da = String(d.x.getDate()).padStart(2, '0');
+              const dateKey = yr + '-' + mo + '-' + da;
+              if (!daily[dateKey] || d.y > daily[dateKey].y) {
+                daily[dateKey] = { x: new Date(yr, d.x.getMonth(), d.x.getDate()), y: d.y };
+              }
+            });
+            const filtered = {};
+            Object.keys(daily).forEach(key => {
+              if (gnssDates.has(key)) filtered[key] = daily[key];
+            });
+            return Object.values(filtered).sort((a, b) => a.x - b.x);
+          }
+
+          let ovPlotData;
+          let _fullEcrData;
+          if (ov.ecr) {
+            const initHalflife = ov.ecr_halflife_days || 7;
+            _fullEcrData = computeECR(ovFiltered, initHalflife);
+            ovPlotData = downsampleDaily(_fullEcrData);
+          } else {
+            ovPlotData = ovFiltered.map(r => ({ x: new Date(r[ovTimeField]), y: r[ov.field] }));
+          }
+
+          const ovDatasetIndex = datasets.length;
+          datasets.push({
+            type: 'line',
+            label: ov.label,
+            data: ovPlotData,
+            backgroundColor: ov.color,
+            borderColor: 'rgba(59,130,246,0.3)',
+            borderWidth: 1,
+            fill: true,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHoverBackgroundColor: 'rgba(59,130,246,0.6)',
+            pointHoverBorderColor: 'rgba(59,130,246,0.8)',
+            pointHoverBorderWidth: 2,
+            yAxisID: ov.y_axis_id,
+            order: 10,
+            pointStyle: 'circle',
+            tension: 0.1,
+          });
+
+          const peakVal = Math.max(...ovPlotData.map(d => d.y || 0), 1);
+          opts.scales[ov.y_axis_id] = {
+            position: 'right',
+            reverse: true,
+            min: 0,
+            max: Math.ceil(peakVal * 4),
+            grid: { display: false },
+            ticks: { color: '#3b82f6' },
+            title: { display: true, text: ov.y_label, color: '#3b82f6', font: { size: 14, weight: 'bold' } },
+          };
+
+          if (ov.ecr) {
+            const _canvasId = canvasId;
+            const _ovFiltered = ovFiltered;
+            const _ovDatasetIndex = ovDatasetIndex;
+            const _axisId = ov.y_axis_id;
+            window['_ecrRedraw_' + _canvasId] = function(newHalflife) {
+              const chart = Chart.getChart(_canvasId);
+              if (!chart) return;
+              const hl = parseFloat(newHalflife);
+              if (hl === 0) {
+                chart.data.datasets[_ovDatasetIndex].data = [];
+                chart.options.scales[_axisId].display = false;
+              } else {
+                const fullData = computeECR(_ovFiltered, hl);
+                const newData = downsampleDaily(fullData);
+                chart.data.datasets[_ovDatasetIndex].data = newData;
+                const newPeak = Math.max(...newData.map(d => d.y || 0), 1);
+                chart.options.scales[_axisId].max = Math.ceil(newPeak * 4);
+                chart.options.scales[_axisId].display = true;
+              }
+              chart.update();
+            };
+          }
+        } catch(e) { console.warn('Overlay fetch failed:', e); }
+      }
+
+      // 地震標記
+      if (chartDef.earthquake) {
+        try {
+          const eqData = await fetchData(chartDef.earthquake.key);
+
+          if (!opts.plugins.annotation) opts.plugins.annotation = { annotations: {} };
+
+          function estimateIntensity(mag, distKm, depthKm) {
+            const hypoR = Math.sqrt(distKm * distKm + depthKm * depthKm);
+            const I = 2.0 * mag - 1.6 * Math.log10(Math.max(hypoR, 5)) - 0.006 * hypoR - 1.0;
+            return Math.max(0, Math.min(7, Math.round(I)));
+          }
+
+          function intensityLabel(level) {
+            const labels = ['0級', '1級', '2級', '3級', '4級', '5弱', '5強', '6弱', '6強', '7級'];
+            return labels[Math.min(level, 9)] || level + '級';
+          }
+
+          function intensityColor(level) {
+            if (level >= 6) return '#a00';
+            if (level >= 5) return '#d60';
+            if (level >= 4) return '#e80';
+            if (level >= 3) return '#ea0';
+            if (level >= 2) return '#0a0';
+            return '#888';
+          }
+
+          if (!document.getElementById('eqTooltip')) {
+            const tip = document.createElement('div');
+            tip.id = 'eqTooltip';
+            tip.style.cssText = 'position:fixed;display:none;background:#fff;border:2px solid #dc2626;border-radius:8px;padding:10px 14px;font-size:13px;line-height:1.8;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;pointer-events:none;max-width:300px;';
+            document.body.appendChild(tip);
+          }
+
+          eqData.forEach((eq, i) => {
+            const eqTime = new Date(eq.date_time);
+            const mag = eq.magnitude || 0;
+            const depth = eq.depth_km || 0;
+            const dist = eq.distance_km || 0;
+            const place = eq.place || '';
+            const dateStr = eq.date_time ? eq.date_time.substring(0, 16) : '';
+            const estI = estimateIntensity(mag, dist, depth);
+            const iLabel = intensityLabel(estI);
+            const iColor = intensityColor(estI);
+
+            const lineWidth = mag >= 6 ? 3 : mag >= 5 ? 2 : 1.5;
+
+            opts.plugins.annotation.annotations['eq' + i] = {
+              type: 'line',
+              xMin: eqTime,
+              xMax: eqTime,
+              borderColor: 'rgba(220,38,38,0)',
+              borderWidth: lineWidth,
+              borderDash: [4, 3],
+              label: {
+                display: mag >= 4.5,
+                content: 'M' + mag.toFixed(1),
+                position: 'start',
+                backgroundColor: 'rgba(220,38,38,0.8)',
+                color: '#fff',
+                font: { size: 10, weight: 'bold' },
+                padding: 3,
+              },
+              enter(ctx) {
+                ctx.element.options.borderColor = 'rgba(220,38,38,0.7)';
+                ctx.chart.draw();
+                const tip = document.getElementById('eqTooltip');
+                if (tip) {
+                  tip.innerHTML =
+                    '<div style="font-weight:bold;color:#dc2626;font-size:15px;margin-bottom:4px;">🔴 M' + mag.toFixed(1) + ' 地震</div>' +
+                    '<div>📅 ' + dateStr + '</div>' +
+                    '<div>📍 ' + place + '</div>' +
+                    '<div>🔽 深度: ' + depth.toFixed(1) + ' km</div>' +
+                    '<div>📏 距土場: ' + dist.toFixed(0) + ' km</div>' +
+                    '<div style="margin-top:4px;padding-top:4px;border-top:1px solid #eee;">' +
+                    '<span style="font-weight:bold;">土場估計震度: </span>' +
+                    '<span style="color:' + iColor + ';font-weight:bold;font-size:15px;">' + iLabel + '</span>' +
+                    '</div>';
+                  tip.style.display = 'block';
+                }
+              },
+              leave(ctx) {
+                ctx.element.options.borderColor = 'rgba(220,38,38,0)';
+                ctx.chart.draw();
+                const tip = document.getElementById('eqTooltip');
+                if (tip) tip.style.display = 'none';
+              },
+            };
+          });
+
+          window['_eqFilter_' + canvasId] = function(minMag) {
+            const chart = Chart.getChart(canvasId);
+            if (!chart) return;
+            const mm = parseFloat(minMag);
+            eqData.forEach((eq, i) => {
+              const ann = chart.options.plugins.annotation.annotations['eq' + i];
+              if (!ann) return;
+              const mag = eq.magnitude || 0;
+              const show = mag >= mm;
+              ann.label.display = show;
+              ann.borderWidth = show ? (mag >= 6 ? 3 : mag >= 5 ? 2 : 1.5) : 0;
+            });
+            chart.update();
+          };
+
+          document.getElementById(canvasId).addEventListener('mousemove', function(e) {
+            const tip = document.getElementById('eqTooltip');
+            if (tip && tip.style.display === 'block') {
+              tip.style.left = (e.clientX - 320) + 'px';
+              tip.style.top = (e.clientY + 20) + 'px';
+            }
+          });
+
+        } catch(e) { console.warn('Earthquake fetch failed:', e); }
+      }
+
+      makeChart(canvasId, datasets, opts);
+    }
+  }
+  hideLoading(src);
+}
+
+async function loadSummary() {
+  let data = {};
+  try {
+    const res = await fetch('data/summary.json?t=' + cacheBust);
+    if (res.ok) data = await res.json();
+  } catch (e) { console.warn('摘要載入失敗:', e); }
+  const cards = [];
+
+  for (const [key, info] of Object.entries(data)) {
+    if (!info.latest || !info.summary_cards) continue;
+    info.summary_cards.forEach(card => {
+      let val = info.latest[card.field];
+      if (val === undefined || val === null) return;
+      if (card.decimals) val = val.toFixed(card.decimals);
+      cards.push({
+        title: card.title,
+        value: val + (card.unit || ''),
+        sub: info.latest[info.time_field] || (info.count.toLocaleString() + ' 筆'),
+        cls: card.cls || ''
+      });
+    });
+  }
+
+  document.getElementById('summaryCards').innerHTML = cards.map(c => `
+    <div class="summary-card ${c.cls}">
+      <h3>${c.title}</h3>
+      <div class="value">${c.value}</div>
+      <div class="sub">${c.sub}</div>
+    </div>
+  `).join('') || '<div class="loading">尚無摘要資料</div>';
+}
+
+// ============ Main ============
+async function refreshData() {
+  document.getElementById('lastUpdate').textContent = '更新中...';
+  DATA = {};
+  cacheBust = new Date().getTime();
+  const tasks = [
+    loadSummary().catch(e => console.error('摘要載入失敗:', e)),
+    ...SOURCES.map(src => loadSource(src).catch(e => console.error(src.key + ' 載入失敗:', e)))
+  ];
+  await Promise.all(tasks);
+  document.getElementById('lastUpdate').textContent = '最後更新：' + new Date().toLocaleString('zh-TW');
+}
+
+buildUI();
+refreshData();
+setInterval(refreshData, 300000);  // 每 5 分鐘重新抓 (資料每小時更新一次)
+</script>
+</body>
+</html>
