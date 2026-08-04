@@ -724,46 +724,61 @@ function makeScatter(id, data, chartDef, recentDays) {
 function downloadChart(id, filename, title) {
   const canvas = document.getElementById(id);
   if (!canvas) return;
-  const titleHeight = title ? 50 : 0;
-  // 散佈圖的圖例(色條+紅點)是 HTML,canvas 抓不到,匯出時要另外畫上去
   const legRow = document.getElementById('scatter_recent_legend_' + id);
   const isScatter = !!legRow;
-  const legendHeight = isScatter ? 56 : 0;
+  // 依裝置像素比放大文字/圖例,避免在高解析度輸出圖上顯得又小又細
+  const cssW = parseFloat(getComputedStyle(canvas).width) || canvas.width;
+  const S = Math.max(1, canvas.width / cssW);
+  const px = (v) => Math.round(v * S);
+  const cjk = '"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif';
+
+  // 散佈圖 canvas 本身已含標題,不再重複畫;其他圖表沒有,才畫標題列
+  const drawTitle = title && !isScatter;
+  const titleHeight = drawTitle ? px(46) : 0;
+  const legendHeight = isScatter ? px(44) : 0;
+
   const tmp = document.createElement('canvas');
   tmp.width = canvas.width;
   tmp.height = canvas.height + titleHeight + legendHeight;
   const tctx = tmp.getContext('2d');
   tctx.fillStyle = '#ffffff';
   tctx.fillRect(0, 0, tmp.width, tmp.height);
-  if (title) {
+
+  if (drawTitle) {
     tctx.fillStyle = '#1e293b';
-    tctx.font = 'bold 24px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
-    tctx.textAlign = 'left';
-    tctx.textBaseline = 'alphabetic';
-    tctx.fillText(title, 20, 34);
+    tctx.font = 'bold ' + px(22) + 'px ' + cjk;
+    tctx.textAlign = 'left'; tctx.textBaseline = 'middle';
+    tctx.fillText(title, px(20), titleHeight / 2);
   }
   tctx.drawImage(canvas, 0, titleHeight);
+
   if (isScatter) {
-    const y = titleHeight + canvas.height + 30;
-    const barW = 200, barH = 16;
+    const y = titleHeight + canvas.height + px(22);
+    const f = px(15), barW = px(150), barH = px(12), gap = px(9);
     const lbl = document.getElementById('scatter_recent_label_' + id);
     const showRed = legRow.style.display !== 'none' && lbl;
-    const totalW = 34 + barW + 8 + 44 + (showRed ? 30 + tctx.measureText('最近 30 天').width : 0);
-    let x = (tmp.width - totalW) / 2;
-    tctx.textBaseline = 'middle';
-    tctx.textAlign = 'left';
-    tctx.font = '20px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
-    tctx.fillStyle = '#475569';
-    tctx.fillText('舊', x, y); x += 34;
+    tctx.font = '600 ' + f + 'px ' + cjk;
+    tctx.textBaseline = 'middle'; tctx.textAlign = 'left';
+    const wOld = tctx.measureText('舊').width, wNew = tctx.measureText('新').width;
+    const redTxt = showRed ? lbl.textContent : '';
+    const redBlock = showRed ? (px(28) + px(15) + px(8) + tctx.measureText(redTxt).width) : 0;
+    const total = wOld + gap + barW + gap + wNew + redBlock;
+    let x = Math.round((tmp.width - total) / 2);
+    tctx.fillStyle = '#334155';
+    tctx.fillText('舊', x, y); x += wOld + gap;
     const g = tctx.createLinearGradient(x, 0, x + barW, 0);
     g.addColorStop(0, 'rgb(190,216,252)'); g.addColorStop(0.5, 'rgb(106,126,168)'); g.addColorStop(1, 'rgb(23,37,84)');
-    tctx.fillStyle = g; tctx.fillRect(x, y - barH / 2, barW, barH);
-    tctx.strokeStyle = '#e2e8f0'; tctx.strokeRect(x, y - barH / 2, barW, barH);
-    x += barW + 8;
-    tctx.fillStyle = '#475569'; tctx.fillText('新', x, y); x += 44;
+    tctx.fillStyle = g;
+    if (tctx.roundRect) { tctx.beginPath(); tctx.roundRect(x, y - barH / 2, barW, barH, barH / 2); tctx.fill(); }
+    else { tctx.fillRect(x, y - barH / 2, barW, barH); }
+    x += barW + gap;
+    tctx.fillStyle = '#334155'; tctx.fillText('新', x, y); x += wNew;
     if (showRed) {
-      tctx.fillStyle = 'rgba(220,38,38,0.95)'; tctx.beginPath(); tctx.arc(x + 8, y, 8, 0, 2 * Math.PI); tctx.fill();
-      tctx.fillStyle = '#475569'; tctx.fillText(lbl.textContent, x + 22, y);
+      x += px(28);
+      const r = px(7);
+      tctx.fillStyle = 'rgba(220,38,38,0.95)';
+      tctx.beginPath(); tctx.arc(x + r, y, r, 0, 2 * Math.PI); tctx.fill();
+      tctx.fillStyle = '#334155'; tctx.fillText(redTxt, x + px(15) + px(8), y);
     }
   }
   tmp.toBlob(function(blob){ saveAs(blob, filename); }, 'image/png', 1.0);
