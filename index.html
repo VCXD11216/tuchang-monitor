@@ -660,13 +660,20 @@ function makeScatter(id, data, chartDef, recentDays) {
   const xLabel = chartDef.x_label || 'X';
   const yLabel = chartDef.y_label || 'Y';
   const r = computeScatterRange(data, chartDef);
-  const older = data.filter(p => !p.recent);
   const recent = data.filter(p => p.recent);
   const recentLabel = '最近 ' + (recentDays || 7) + ' 天';
+  // 時間漸層: 由舊(淺藍)到新(深藍),依資料時間順序上色
+  const n = data.length;
+  const CA = [190, 216, 252], CB = [23, 37, 84];
+  const grad = data.map((_, i) => {
+    const t = n > 1 ? i / (n - 1) : 1;
+    return `rgb(${Math.round(CA[0]+(CB[0]-CA[0])*t)},${Math.round(CA[1]+(CB[1]-CA[1])*t)},${Math.round(CA[2]+(CB[2]-CA[2])*t)})`;
+  });
 
   if (charts[id]) {
     const c = charts[id];
-    c.data.datasets[0].data = older;
+    c.data.datasets[0].data = data;
+    c.data.datasets[0].pointBackgroundColor = grad;
     c.data.datasets[1].data = recent;
     c.data.datasets[1].label = recentLabel;
     c.options.scales.x.min = r.min; c.options.scales.x.max = r.max; c.options.scales.x.ticks.stepSize = r.stepSize;
@@ -677,7 +684,7 @@ function makeScatter(id, data, chartDef, recentDays) {
   charts[id] = new Chart(ctx.getContext('2d'), {
     type:'scatter',
     data:{ datasets:[
-      { label:'較早', data:older, pointRadius:3, backgroundColor:'rgba(59,130,246,0.75)', borderColor:'transparent', order:2 },
+      { label:'軌跡（淺=早 → 深=近）', data:data, pointRadius:3, pointBackgroundColor:grad, backgroundColor:'rgba(59,130,246,0.8)', borderColor:'transparent', order:2 },
       { label:recentLabel, data:recent, pointRadius:5, backgroundColor:'rgba(220,38,38,0.95)', borderColor:'#ffffff', borderWidth:1, order:1 },
     ]},
     options:{
