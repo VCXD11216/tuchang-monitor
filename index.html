@@ -355,6 +355,7 @@
         <span class="status-dot"></span>
         <span id="lastUpdate">載入中...</span>
       </span>
+      <span id="gnssFresh" style="font-size:13px;color:#64748b;"></span>
       <img src="data:image/png;base64,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" alt="DEMon Logo" class="header-logo">
     </div>
   </div>
@@ -724,9 +725,13 @@ function downloadChart(id, filename, title) {
   const canvas = document.getElementById(id);
   if (!canvas) return;
   const titleHeight = title ? 50 : 0;
+  // 散佈圖的圖例(色條+紅點)是 HTML,canvas 抓不到,匯出時要另外畫上去
+  const legRow = document.getElementById('scatter_recent_legend_' + id);
+  const isScatter = !!legRow;
+  const legendHeight = isScatter ? 56 : 0;
   const tmp = document.createElement('canvas');
   tmp.width = canvas.width;
-  tmp.height = canvas.height + titleHeight;
+  tmp.height = canvas.height + titleHeight + legendHeight;
   const tctx = tmp.getContext('2d');
   tctx.fillStyle = '#ffffff';
   tctx.fillRect(0, 0, tmp.width, tmp.height);
@@ -734,9 +739,33 @@ function downloadChart(id, filename, title) {
     tctx.fillStyle = '#1e293b';
     tctx.font = 'bold 24px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
     tctx.textAlign = 'left';
+    tctx.textBaseline = 'alphabetic';
     tctx.fillText(title, 20, 34);
   }
   tctx.drawImage(canvas, 0, titleHeight);
+  if (isScatter) {
+    const y = titleHeight + canvas.height + 30;
+    const barW = 200, barH = 16;
+    const lbl = document.getElementById('scatter_recent_label_' + id);
+    const showRed = legRow.style.display !== 'none' && lbl;
+    const totalW = 34 + barW + 8 + 44 + (showRed ? 30 + tctx.measureText('最近 30 天').width : 0);
+    let x = (tmp.width - totalW) / 2;
+    tctx.textBaseline = 'middle';
+    tctx.textAlign = 'left';
+    tctx.font = '20px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+    tctx.fillStyle = '#475569';
+    tctx.fillText('舊', x, y); x += 34;
+    const g = tctx.createLinearGradient(x, 0, x + barW, 0);
+    g.addColorStop(0, 'rgb(190,216,252)'); g.addColorStop(0.5, 'rgb(106,126,168)'); g.addColorStop(1, 'rgb(23,37,84)');
+    tctx.fillStyle = g; tctx.fillRect(x, y - barH / 2, barW, barH);
+    tctx.strokeStyle = '#e2e8f0'; tctx.strokeRect(x, y - barH / 2, barW, barH);
+    x += barW + 8;
+    tctx.fillStyle = '#475569'; tctx.fillText('新', x, y); x += 44;
+    if (showRed) {
+      tctx.fillStyle = 'rgba(220,38,38,0.95)'; tctx.beginPath(); tctx.arc(x + 8, y, 8, 0, 2 * Math.PI); tctx.fill();
+      tctx.fillStyle = '#475569'; tctx.fillText(lbl.textContent, x + 22, y);
+    }
+  }
   tmp.toBlob(function(blob){ saveAs(blob, filename); }, 'image/png', 1.0);
 }
 
@@ -1170,6 +1199,21 @@ async function loadSummary() {
       <div class="sub">${c.sub}</div>
     </div>
   `).join('') || '<div class="loading">尚無摘要資料</div>';
+
+  // GNSS 資料新鮮度 (最後一筆 GNSS 日期距今幾天)
+  const gf = document.getElementById('gnssFresh');
+  if (gf && data.gnss && data.gnss.latest) {
+    const dstr = data.gnss.latest[data.gnss.time_field];
+    if (dstr) {
+      const dd = new Date(dstr.replace(' ', 'T'));
+      const today = new Date();
+      const days = Math.round((new Date(today.getFullYear(), today.getMonth(), today.getDate())
+        - new Date(dd.getFullYear(), dd.getMonth(), dd.getDate())) / 86400000);
+      const ago = days <= 0 ? '今天' : days === 1 ? '昨天' : days + ' 天前';
+      const color = days <= 1 ? '#16a34a' : days <= 4 ? '#d97706' : '#dc2626';
+      gf.innerHTML = 'GNSS 資料：<b style="color:' + color + '">' + (dd.getMonth() + 1) + '/' + dd.getDate() + '（' + ago + '）</b>';
+    }
+  }
 }
 
 // ============ Main ============
