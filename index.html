@@ -707,7 +707,9 @@ function makeScatter(id, data, chartDef, recentDays) {
         legend:{display:false},
         title:{display:true, text:chartDef.title, color:'#1e293b', font:{size:20,weight:'bold'}, padding:{bottom:5}},
         subtitle:{display:true, text:xLabel, color:'#64748b', font:{size:16,weight:'bold'}, padding:{bottom:10}},
-        tooltip:{callbacks:{label:(c)=> 'N: '+c.raw.x.toFixed(1)+', E: '+c.raw.y.toFixed(1)+' (mm)'}},
+        tooltip:{displayColors:false, callbacks:{
+          title:(items)=> (items[0] && items[0].raw && items[0].raw.date) ? items[0].raw.date.slice(0,10) : '',
+          label:(c)=> 'N: '+c.raw.x.toFixed(1)+', E: '+c.raw.y.toFixed(1)+' (mm)'}},
         annotation:{annotations:{
           x0:{type:'line',xMin:0,xMax:0,borderColor:'rgba(0,0,0,0.15)',borderWidth:1.5},
           y0:{type:'line',yMin:0,yMax:0,borderColor:'rgba(0,0,0,0.15)',borderWidth:1.5}
@@ -886,6 +888,7 @@ async function loadSource(src) {
         const pts = data.map(r => ({
           x: r[s.field_x], y: r[s.field_y],
           recent: (lastT - new Date(r[tf]).getTime()) < win,
+          date: r[tf],
         }));
         makeScatter(_cid, pts, chartDef, d);
         // 更新色條旁邊的紅點圖例 (無 → 隱藏)
