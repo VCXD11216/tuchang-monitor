@@ -563,6 +563,7 @@ function buildUI() {
                 </select></label>` : ''}
               ${chart.type === 'scatter' ? `<label style="font-size:13px;color:#64748b;">標記最近
                 <select id="scatter_days_${canvasId}" onchange="window._scatterDays_${canvasId}(this.value)" style="padding:2px 6px;border-radius:4px;border:1px solid #cbd5e1;font-size:13px;">
+                  <option value="0">無</option>
                   <option value="1">1天</option>
                   <option value="3">3天</option>
                   <option value="7" selected>7天</option>
@@ -661,7 +662,8 @@ function makeScatter(id, data, chartDef, recentDays) {
   const yLabel = chartDef.y_label || 'Y';
   const r = computeScatterRange(data, chartDef);
   const recent = data.filter(p => p.recent);
-  const recentLabel = '最近 ' + (recentDays || 7) + ' 天';
+  const rd = (recentDays === undefined ? 7 : recentDays);
+  const recentLabel = rd ? ('最近 ' + rd + ' 天') : '最近（無）';
   // 時間漸層: 由舊(淺藍)到新(深藍),依資料時間順序上色
   const n = data.length;
   const CA = [190, 216, 252], CB = [23, 37, 84];
@@ -690,7 +692,8 @@ function makeScatter(id, data, chartDef, recentDays) {
     options:{
       responsive:true, maintainAspectRatio:true, aspectRatio:1,
       plugins:{
-        legend:{display:true, position:'bottom', labels:{usePointStyle:true, pointStyle:'circle', boxWidth:8, padding:12, font:{size:12,weight:'bold'}}},
+        legend:{display:true, position:'bottom', labels:{usePointStyle:true, pointStyle:'circle', boxWidth:8, padding:12, font:{size:12,weight:'bold'},
+          filter:(item, cdata)=> cdata.datasets[item.datasetIndex].data.length > 0}},
         title:{display:true, text:chartDef.title, color:'#1e293b', font:{size:20,weight:'bold'}, padding:{bottom:5}},
         subtitle:{display:true, text:xLabel, color:'#64748b', font:{size:16,weight:'bold'}, padding:{bottom:10}},
         tooltip:{callbacks:{label:(c)=> 'N: '+c.raw.x.toFixed(1)+', E: '+c.raw.y.toFixed(1)+' (mm)'}},
@@ -823,7 +826,8 @@ async function loadSource(src) {
       const lastT = data.length ? new Date(data[data.length - 1][tf]).getTime() : 0;
       const _cid = canvasId;
       function applyScatterDays(days) {
-        const d = parseInt(days) || 7;
+        let d = parseInt(days);
+        if (isNaN(d)) d = 7;   // 0 = 無 (不標紅), 其餘為天數
         const win = d * 24 * 3600 * 1000;
         const pts = data.map(r => ({
           x: r[s.field_x], y: r[s.field_y],
