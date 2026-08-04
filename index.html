@@ -579,11 +579,16 @@ function buildUI() {
             <div class="chart-loading" id="loading_${canvasId}"><div class="spinner"></div>載入資料中...</div>
             <canvas id="${canvasId}"></canvas>
           </div>
-          ${isScatter ? `<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;font-size:12px;color:#64748b;">
-            <span>舊</span>
-            <span style="width:140px;height:11px;border-radius:6px;background:linear-gradient(to right, rgb(190,216,252), rgb(106,126,168), rgb(23,37,84));border:1px solid #e2e8f0;"></span>
-            <span>新</span>
-            <span style="color:#94a3b8;margin-left:2px;">＝軌跡時間先後</span>
+          ${isScatter ? `<div style="display:flex;align-items:center;justify-content:center;gap:22px;margin-top:8px;font-size:12px;color:#64748b;flex-wrap:wrap;">
+            <span style="display:flex;align-items:center;gap:8px;">
+              <span>舊</span>
+              <span style="width:140px;height:11px;border-radius:6px;background:linear-gradient(to right, rgb(190,216,252), rgb(106,126,168), rgb(23,37,84));border:1px solid #e2e8f0;"></span>
+              <span>新</span>
+            </span>
+            <span id="scatter_recent_legend_${canvasId}" style="display:flex;align-items:center;gap:6px;">
+              <span style="width:11px;height:11px;border-radius:50%;background:rgba(220,38,38,0.95);border:1px solid #fff;display:inline-block;"></span>
+              <span id="scatter_recent_label_${canvasId}">最近 7 天</span>
+            </span>
           </div>` : ''}
         `;
         grid.appendChild(card);
@@ -698,8 +703,7 @@ function makeScatter(id, data, chartDef, recentDays) {
     options:{
       responsive:true, maintainAspectRatio:true, aspectRatio:1,
       plugins:{
-        legend:{display:true, position:'bottom', labels:{usePointStyle:true, pointStyle:'circle', boxWidth:8, padding:12, font:{size:12,weight:'bold'},
-          filter:(item, cdata)=> item.datasetIndex !== 0 && cdata.datasets[item.datasetIndex].data.length > 0}},
+        legend:{display:false},
         title:{display:true, text:chartDef.title, color:'#1e293b', font:{size:20,weight:'bold'}, padding:{bottom:5}},
         subtitle:{display:true, text:xLabel, color:'#64748b', font:{size:16,weight:'bold'}, padding:{bottom:10}},
         tooltip:{callbacks:{label:(c)=> 'N: '+c.raw.x.toFixed(1)+', E: '+c.raw.y.toFixed(1)+' (mm)'}},
@@ -840,6 +844,11 @@ async function loadSource(src) {
           recent: (lastT - new Date(r[tf]).getTime()) < win,
         }));
         makeScatter(_cid, pts, chartDef, d);
+        // 更新色條旁邊的紅點圖例 (無 → 隱藏)
+        const legEl = document.getElementById('scatter_recent_legend_' + _cid);
+        const lblEl = document.getElementById('scatter_recent_label_' + _cid);
+        if (legEl) legEl.style.display = d ? 'flex' : 'none';
+        if (lblEl) lblEl.textContent = '最近 ' + d + ' 天';
       }
       window['_scatterDays_' + _cid] = applyScatterDays;
       const sel = document.getElementById('scatter_days_' + _cid);
