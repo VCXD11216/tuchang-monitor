@@ -68,3 +68,15 @@
 - 雨量又有斷層：`python scripts/backfill_rainfall.py`（自動補到本月）。
 - 排程休眠：repo 60 天沒有人為 push,GitHub 會暫停自動排程,到 Actions 手動 Run 一次即可。
 - 完整操作說明見 `README.md`。
+
+## 2026-08-10 — 修正 GNSS 排程 6 天沒更新
+
+**症狀**：GNSS 資料停在 8/4,網頁新鮮度顯示「6 天前」。排程有跑、回報成功(0x0),但資料沒更新。
+
+**根因**：`sync_gnss_local.bat` 是 **LF(Unix)換行**(用編輯器產生的)。cmd.exe 執行 LF 換行的 .bat 會靜默失敗(尤其 `if (...)` 括號區塊),所以排程「跑了但什麼都沒做」。之前的手動更新都是直接跑 python+git、沒經過 bat,才會成功而沒察覺。
+
+**修正**：
+- 把 `scripts/*.bat` 轉成 CRLF。
+- 新增 `.gitattributes`:`*.bat text eol=crlf`,確保之後 clone/checkout 永遠是 CRLF。
+- bat 加上 `scripts/sync_gnss.log` 詳細記錄(已 gitignore),日後可直接看每步結果排錯。
+- 診斷指令:`Get-ScheduledTaskInfo -TaskName "土場GNSS同步"` 看 LastRunTime/LastTaskResult;`schtasks` 或 `Start-ScheduledTask` 觸發後看 `scripts/sync_gnss.log`。

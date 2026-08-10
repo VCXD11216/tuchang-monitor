@@ -7,3 +7,4 @@ venv/
 
 # 本機密鑰 (絕不上傳)
 scripts/secrets.local.bat
+scripts/sync_gnss.log
