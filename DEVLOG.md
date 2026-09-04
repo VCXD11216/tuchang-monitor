@@ -80,3 +80,18 @@
 - 新增 `.gitattributes`:`*.bat text eol=crlf`,確保之後 clone/checkout 永遠是 CRLF。
 - bat 加上 `scripts/sync_gnss.log` 詳細記錄(已 gitignore),日後可直接看每步結果排錯。
 - 診斷指令:`Get-ScheduledTaskInfo -TaskName "土場GNSS同步"` 看 LastRunTime/LastTaskResult;`schtasks` 或 `Start-ScheduledTask` 觸發後看 `scripts/sync_gnss.log`。
+
+## 2026-09-04 — GNSS 同步搬到研究室常開電腦
+
+把 GNSS 每日同步從筆電搬到研究室常開的電腦(在校園網路、24 小時開機),更穩定。
+
+**新電腦設定重點**(clone 到 `C:\tuchang-monitor`,非 OneDrive、純英文路徑,避開中文/換行問題):
+1. 裝 Git + Python(winget 或官網);`pip install pymysql certifi`。
+2. `git clone` repo(`.gitattributes` 會讓 .bat 自動變 CRLF)。
+3. 建 `scripts/secrets.local.bat`(填 RMDGNSS_PASSWORD)。
+4. **設 git 身分**:`git config --global user.name/user.email` ← clone 不會帶身分,漏設會讓排程的 git commit 靜默失敗(踩過)。
+5. 首次 `git push` 完成 GitHub 瀏覽器登入(憑證快取)。
+6. Register-ScheduledTask「土場GNSS同步」(AtLogOn + Daily 12:00 + StartWhenAvailable)。
+7. 停用筆電舊排程(系統管理員:`Disable-ScheduledTask -TaskName "土場GNSS同步"`),避免兩台衝突。
+
+**這台需保持登入狀態**(Interactive 排程),常開+登入即可每天中午自動同步。
