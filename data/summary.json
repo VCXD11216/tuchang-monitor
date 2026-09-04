@@ -1,1 +1,1 @@
-{"gnss":{"count":709,"latest":{"TotalMove":29.7652,"H":837.0,"date_time":"2026-09-02 00:00:00"},"time_field":"date_time","summary_cards":[{"title":"GNSS 總位移","field":"TotalMove","unit":" mm","cls":"ok"},{"title":"GNSS 高程 H","field":"H","unit":" m","cls":"","decimals":3}]}}
+{"gnss":{"count":710,"latest":{"TotalMove":28.2111,"H":837.0,"date_time":"2026-09-03 00:00:00"},"time_field":"date_time","summary_cards":[{"title":"GNSS 總位移","field":"TotalMove","unit":" mm","cls":"ok"},{"title":"GNSS 高程 H","field":"H","unit":" m","cls":"","decimals":3}]}}
